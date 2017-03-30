@@ -56,3 +56,7 @@ Temporary Items
 
 # specific files
 /mjkey.txt
+*.dll
+*.lib
+*.exe
+MUJOCO_LOG.TXT

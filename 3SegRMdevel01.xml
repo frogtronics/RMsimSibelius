@@ -1,0 +1,108 @@
+<mujoco model="3SegRMdevel">
+	<compiler coordinate="global"/>
+	<option timestep="0.001" integrator="RK4" collision="predefined">
+		<flag gravity="enable" contact="enable" passive="enable"/>
+
+	</option>
+	<size nkey="1" />
+
+	<default>
+		<geom rgba=".8 .6 .4 0.5"/>
+	</default>
+
+	<asset>
+		<texture type="skybox" builtin="gradient" rgb1="1 1 1" rgb2=".6 .8 1" width="256" height="256"/>
+		<texture name="texplane" type="2d" builtin="checker" rgb1=".2 .3 .4" rgb2=".1 0.15 0.2" 
+            width="100" height="100"/>  
+		<material name='MatPlane' reflectance='0.5' texture="texplane" texrepeat="1 1" texuniform="true"/>
+
+	</asset>
+
+	<worldbody>
+		<light pos="0 1 1" dir="0 -1 -1" diffuse="1 1 1"/>
+		<geom name='floor' pos='0 0 0' size='1 1 0.125' type='plane' material="MatPlane"/><!-- make the floor the same distance as the foot sphere radius -->
+<!-- 		<body name="m_tar" mocap="true">
+			<geom type="sphere" pos="0.002 0 0.0080277" size="0.002" rgba="1 0 0 .5"/>
+		</body> -->
+		<body name="s_tar"><!-- Tarsals -->
+			<inertial pos="0 0. 0" mass="0.00015557" diaginertia="1.279E-09 3.99E-10 1.264E-09" />
+			<geom name="geom_tar" type="capsule" fromto="0 0 0 0 0. 0.0080277" size="0.002" rgba="0.5 0.5 0 .4"/>
+			<joint name="j_tmt" type="free" pos="0 0. 0" stiffness="0"/>
+			<site name="t_ank_prx" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
+			<geom name="footSphere" type="sphere" pos="0 0 0" size="0.002" rgba=".3 .9 .3 .4"/><!-- seems to be necessary for ground contact -->
+			<body name="s_tib"><!-- Tibfib -->
+				<inertial pos="0 0. 0.0080277" mass="0.00036153" diaginertia="6.383E-09 1.524E-09 6.6E-09"/>
+				<geom type="capsule" fromto="0 0. 0.0080277  0 0. 0.0284948" size="0.002" rgba="0.5 0.5 0 .4"/>
+				<joint name="j_ank" type="hinge" axis="0 1 0" pos="0 0. 0.0080277" stiffness="1" springdamper=".002 1"/> <!-- stiffness="0" springdamper=".002 1" first parameter time constant at least 2x dt. Second damping ratio 1 for critical damping -->
+				<site name="t_ank_dst" pos="-0.002 0 0.02" size="0.001" rgba="0 0 1 1"/>
+				<site name="t_kne_prx" pos="0.002 0 0.02" size="0.001" rgba="0 0 1 1"/>
+				<geom name="jointSphere_ank" type="sphere" pos="0 0 0.0080277" size="0.003" rgba=".3 .9 .3 .4"/>
+				<site name="t_ank_via" pos="-0.003 0 0.0080277" size="0.0003" rgba="0 1 1 1"/>
+				<body name="s_fem"><!-- Femur -->
+					<inertial pos="0 0. 0.0284948" mass="0.00077613" diaginertia="1.57E-08 6.71E-09 1.594E-08"/>
+					<geom type="capsule" fromto="0 0. 0.0284948  0 0. 0.046286" size="0.002" rgba="0.7 0.7 0 .4"/>
+					<joint name="j_kne" type="hinge" axis="0 1 0" pos="0 0. 0.0284948" stiffness="1" springdamper=".002 1"/>
+					<site name="t_kne_dst" pos="0.002 0 0.035" size="0.001" rgba="0 0 1 1"/>
+					<site name="t_hip_prx" pos="-0.002 0 0.035" size="0.001" rgba="0 0 1 1"/>
+					<geom name="jointSphere_kne" type="sphere" pos="0 0. 0.0284948" size="0.003" rgba=".3 .9 .3 .4"/>
+					<site name="t_kne_via" pos="0.003 0 0.0284948" size="0.0003" rgba="0 1 1 1"/>
+					<body name="s_bod"><!-- Body -->
+						<inertial pos="0 0. 0.046286" mass="0.0045" diaginertia="0.000000891 0.000000473 0.00000112"/> <!-- note 0.5 body mass -->
+						<geom type="capsule" fromto="0 0. 0.046286  0 0. 0.0660299" size="0.002" rgba="0.5 0.5 0 .4"/>
+						<site name="t_hip_dst" pos="-0.002 0 0.055" size="0.001" rgba="0 0 1 1"/>
+						<geom name="jointSphere_hip" type="sphere" pos="0 0. 0.046286" size="0.003" rgba=".3 .9 .3 .4"/>
+						<site name="t_hip_via" pos="-0.003 0 0.0462868" size="0.0003" rgba="0 1 1 1"/>
+						<joint name="j_hip" type="hinge" axis="0 1 0" pos="0 0. 0.046286" stiffness="1" springdamper=".002 1"/>
+						<body name="s_bod_marker"><!-- body marker for kinematics saving-->
+							<inertial pos="0 0. 0.0660299" mass="0.0000001"/>
+							<geom type="capsule" fromto="0 0. 0.0660299  0 0. 0.0661" size="0.0002" rgba="0.5 0.5 0 .4"/>
+						</body>
+					</body>
+				</body>	
+			</body>	
+		</body>
+
+	</worldbody>
+	<contact>
+		<pair geom1="floor" geom2="geom_tar" friction="1 1 0.5 0.0001 0.0001"/>
+	</contact>
+	<equality>
+ 		<!-- <connect name="c_tar" body1="m_tar" body2="s_tar" anchor="0.003 0 0.0080277" active="true" /> -->
+<!--  		<weld name="c_tar" body1="m_tar" body2="s_tar" active="false" /> -->
+	</equality>
+	<tendon>
+		<spatial width="0.0002" rgba=".95 .3 .3 1" limited="false" name="tend_ank">
+			<site site="t_ank_prx"/>
+			<geom geom="jointSphere_ank" sidesite="t_ank_via"/>
+			<site site="t_ank_dst"/>
+		</spatial>
+		<spatial width="0.0002" rgba=".95 .3 .3 1" limited="false" name="tend_kne">
+			<site site="t_kne_prx"/>
+			<geom geom="jointSphere_kne" sidesite="t_kne_via"/>
+			<site site="t_kne_dst"/>
+		</spatial>
+		<spatial width="0.0002" rgba=".95 .3 .3 1" limited="false" name="tend_hip">
+			<site site="t_hip_prx"/>
+			<geom geom="jointSphere_hip" sidesite="t_hip_via"/>
+			<site site="t_hip_dst"/>
+		</spatial>
+	</tendon>
+	<actuator>
+	
+		<!--  ================= Torque actuators ================= /-->
+		<motor tendon='tend_ank' name='a_tend_ank'/>
+		<motor tendon='tend_kne' name='a_tend_kne'/>
+		<motor tendon='tend_hip' name='a_tend_hip'/>
+	</actuator>
+	<sensor>
+		<tendonpos tendon="tend_ank"/>
+	</sensor>
+
+	<keyframe>
+		
+
+		
+ 		 <!-- <key time="0" qpos="0.000	0.000	0.000	0.924	-0.000	-0.382	-0.000	1.570	-1.570	1.570"/>   -->
+
+	</keyframe>
+</mujoco>
