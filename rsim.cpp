@@ -55,7 +55,7 @@ char lastfile[1000] = "";
 char error[1000];
 // model
 //mjModel* m = 0;
-mjModel* m = mj_loadXML("3SegRMdevel01.xml", NULL, error, 1000);
+mjModel* m = mj_loadXML("5SegRM.xml", NULL, error, 1000);
 mjData* d = 0;
 
 //mjModel* m;
@@ -66,19 +66,20 @@ char const *outfile = "savedData.txt";
 //allocate array for output data
 long double arrayout[10000] = {0};
 float dataout[10000][20];
-float pos_dataout[10000][20];
+float pos_dataout[10000][24];
 
+int number_of_samples = 300;
 int counter = 0;
 clock_t tStart = clock();
 float realTime = 0;
 float prevTime = 0;
-int max_steps = 200;
+
 float li = 0; //initial tendon length
 
-std::array<std::array<float, 10>, 1> inputdata_qpos;//i rows, j cols
-std::array<std::array<float, 3>, 1000> inputdata_inforces;//3 input forces, 1000 rows
-std::ifstream datfile_qpos("qposInit.txt");
-std::ifstream datfile_inforces("inforces.txt");
+std::array<std::array<float, 11>, 1> inputdata_qpos;//i rows, j cols
+std::array<std::array<float, 4>, 1000> inputdata_inforces;//3 input forces, 1000 rows
+std::ifstream datfile_qpos("qposInit.dat");
+std::ifstream datfile_inforces("inforces.dat");
 
 char opt_title[1000] = "";
 char opt_content[1000];
@@ -93,13 +94,23 @@ void setcontrol(mjtNum time, mjtNum* ctrl, int nu)
     int switches[2] = {1};
 	float force_offset = forcei;
 	forceAdj = -liveforce * (forceIn - force_offset);
-	// if ((counter != 0) & (forceIn > 1.2* abs(forcePrev))) {
-		// forceAdj = -(forcePrev - force_offset);
-	// }
 	
-	ctrl[0] = forceAdj;//ankle extensor
-	ctrl[1] = inputdata_inforces[counter][1];//knee extensor force
-	ctrl[2] = inputdata_inforces[counter][2];//hip extensor force
+	//ctrl[0] = forceAdj;//ankle extensor
+	if (d->qpos[8] + m->qpos0[8] < -3) {// check if ankle angle is greater than 180 degrees, negative angle
+		//ctrl[0] = inputdata_inforces[counter][0];//ankle extensor force
+		ctrl[0] = forceAdj;//ankle extensor
+		printf("%f\n", forceAdj);
+	}
+	else {
+		ctrl[0] = 0;
+	}
+	
+	ctrl[1] = inputdata_inforces[counter][1];//knee extensor servo pos
+	ctrl[2] = inputdata_inforces[counter][2];//hip extensor servo pos
+	
+	 // --- apply force to COM from forelimbs ---
+    d->xfrc_applied[6*6 + 2] = inputdata_inforces[counter][3]; // body 6 (from 0) is com
+	
 	forcePrev = forceIn;
     // for( int i=0; i<nu; i++ )
         //qfrc_applied[i] = mju_sin(time);
@@ -117,11 +128,11 @@ void advance(void)
 	
 	
 	//set initial pose
-	// if (counter == 0) {
-		// for (int i = 0; i<=10; i++) {
-			// d->qpos[i] = inputdata_qpos[0][i];
-		// }
-	// }
+	if (counter == 0) {
+		for (int i = 0; i<=11; i++) {
+			printf("qpos %f\n", d->qpos[i]);
+		}
+	}
     setcontrol(d->time, d->ctrl, m->nu);
     mj_step(m, d);
 	if (counter == 0) {
@@ -130,8 +141,9 @@ void advance(void)
 		printf("Li = %f\n", li);
 		printf("Li = %f\n", d->sensordata[0]);
 	}
+
 	
-	if (counter == max_steps - 1) {
+	if (counter == number_of_samples - 1) {
 		lf = d->sensordata[0];
 		
 	}
@@ -163,8 +175,8 @@ void advance(void)
 	dataout[counter][4] = posOut;
 	dataout[counter][5] = forceAdj;
 	//dataout[counter][]
-    for (int j = 0; j < (m->nbody - 1) * 3; j++) {
-		pos_dataout[counter][j] = d->xpos[j + 3];//skip world body
+    for (int j = 0; j < (m->nbody) * 3; j++) {
+		pos_dataout[counter][j] = d->xpos[j];//skip world body
 	}
         
 
@@ -218,25 +230,50 @@ int main(int argc, const char** argv)
 
     mjModel* mnew = 0;
     
-    mnew = mj_loadXML("3SegRMdevel01.xml", 0, error, 1000);
+    mnew = mj_loadXML("5SegRM.xml", 0, error, 1000);
 
     
     {
         printf("%s\n", error);
 
     }
-	//load initial pose data
-	for (int i = 0; i <= 1; i++) {
-		for (int j = 0; j <= 10; j++) {
-			datfile_qpos >> inputdata_qpos[i][j];
-		}
-	}
-	// load force data from other muscles - note we ignore the first column - it's a placeholder for the ankle
-	for (int i = 0; i < 1000; i++) {
-		for (int j = 0; j < 3; j++) {
-			datfile_inforces >> inputdata_inforces[i][j];
-		}
-	}	
+/* 	//load initial pose data
+    for (int i = 0; i <= 1; i++) {
+        for (int j = 0; j < 11; j++) {
+            datfile_qpos >> inputdata_qpos[i][j];
+        }
+    }
+
+    // inforces is ankle actuator force, knee servo position, hip servo position, forelimb force
+    for (int i = 0; i < number_of_samples; i++) {
+        for (int j = 0; j < 4; j++) {
+            datfile_inforces >> inputdata_inforces[i][j];
+        }
+    }	 */
+	
+    // Get number of time samples
+    number_of_samples = 0;
+    std::string line;
+    while (std::getline(datfile_inforces, line)) {
+        ++number_of_samples;
+    }
+    datfile_inforces.close ();
+    std::ifstream datfile_inforces("inforces.dat");
+
+    for (int i = 0; i <= 1; i++) {
+        for (int j = 0; j < 11; j++) {
+            datfile_qpos >> inputdata_qpos[i][j];
+        }
+    }
+
+    // inforces is ankle actuator force, knee servo position, hip servo position, forelimb force
+    for (int i = 0; i < number_of_samples; i++) {
+        for (int j = 0; j < 4; j++) {
+            datfile_inforces >> inputdata_inforces[i][j];
+        }
+    }
+
+    datfile_inforces.close ();
 
     // delete old model, assign new
     mj_deleteData(d);
@@ -253,19 +290,31 @@ int main(int argc, const char** argv)
 	printf("nv %i\n", m->nv);
 	printf("nbody %i\n", m->nbody);
 	printf("nv %i\n", m->nv);
-    //mju_copy(d->qpos, m->key_qpos, m->nq*1);// tells MJ to load keyframe angles!!
+	printf("nsamples %i\n", number_of_samples);
+	//mju_copy(d->qpos, m->key_qpos, m->nq*1);// tells MJ to load keyframe angles!!
 	//---MUST set qpos0 as reference position.  MJ ignores the free joint, so skip that
-	for (int i = 0; i<=m->nq; i++) {
-		m->qpos0[i] = inputdata_qpos[0][i];
-	}	
-	//now account for free joint
-	for (int i = 0; i < 7; i++) {
-		d->qpos[i] = inputdata_qpos[0][i];
-	}
-	printf("pos ref\n");
-	for (int i = 0; i < m->nq; i++) {
-		printf("%f\n", m->qpos0[i]);
-	}
+    for (int i = 0; i < m->nq; i++) {
+        m->qpos0[i] = inputdata_qpos[0][i];
+    }   
+    //now account for free joint
+    for (int i = 0; i < 7; i++) {
+        d->qpos[i] = inputdata_qpos[0][i];
+    }
+    printf("pos ref\n");
+    for (int i = 0; i < m->nq; i++) {
+        printf("%f\n", m->qpos0[i]);
+    }
+
+    for (int i = 0; i < m->nq; i++) {
+        m->qpos_spring[i] = m->qpos0[i];
+    }
+
+    printf("spring ref\n");
+    for (int i = 0; i < m->nq; i++) {
+        printf("%f\n", m->qpos_spring[i]);
+    }
+	//advance();
+	
     // main loop
     
     tStart = clock();
@@ -290,7 +339,7 @@ int main(int argc, const char** argv)
 		// Sleep(1000);
 	  }
 
-	 while (SP->IsConnected() && counter < max_steps) 
+	 while (SP->IsConnected() && counter < number_of_samples) 
 	 {
 		while (SP->ReadData(incomingData, 3) == 3 && incomingData[2] == 65)
 		{
@@ -302,7 +351,7 @@ int main(int argc, const char** argv)
 				// printf("%f\n", realTime - prevTime);
 			// }
 			advance();
-			// printf("%f\n", posOut);
+			//printf("%f\n", d->qpos[8] + m->qpos0[8]);
 			//printf("%f\n", d->sensordata[0]);
 			//mj_step(m, d);
 			//counter ++;
@@ -327,7 +376,7 @@ int main(int argc, const char** argv)
     FILE *f = fopen("savedData.txt", "w");//a for append, t for text mode
     //fwrite(arrayout, sizeof(char), sizeof(arrayout), f);
     
-    for(int i = 1; i < max_steps; i++) {
+    for(int i = 1; i < number_of_samples; i++) {
         for (int j = 0; j < m->nq + 4; j++)
            fprintf(f, "%f\t", dataout[i][j]); 
         fprintf(f, "\n");
@@ -339,8 +388,8 @@ int main(int argc, const char** argv)
 	FILE *f1 = fopen("savedData_kinematics.txt", "w");//a for append, t for text mode
     //fwrite(arrayout, sizeof(char), sizeof(arrayout), f);
     
-    for(int i = 1; i < max_steps; i++) {
-        for (int j = 0; j < (m->nbody - 1) * 3; j++)
+    for(int i = 1; i < number_of_samples; i++) {
+        for (int j = 0; j < (m->nbody) * 3; j++)
            fprintf(f1, "%f\t", pos_dataout[i][j]); 
         fprintf(f1, "\n");
 
