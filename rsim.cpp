@@ -99,7 +99,7 @@ void setcontrol(mjtNum time, mjtNum* ctrl, int nu)
 	if (d->qpos[8] + m->qpos0[8] < -3) {// check if ankle angle is greater than 180 degrees, negative angle
 		//ctrl[0] = inputdata_inforces[counter][0];//ankle extensor force
 		ctrl[0] = forceAdj;//ankle extensor
-		printf("%f\n", forceAdj);
+		//printf("%f\n", forceAdj);
 	}
 	else {
 		ctrl[0] = 0;
@@ -128,18 +128,21 @@ void advance(void)
 	
 	
 	//set initial pose
-	if (counter == 0) {
+/* 	if (counter == 0) {
 		for (int i = 0; i<=11; i++) {
 			printf("qpos %f\n", d->qpos[i]);
 		}
+	} */
+	if (counter > 0) {// allow simulation to free fall for first step to make sure model is in correct posture
+		setcontrol(d->time, d->ctrl, m->nu);
 	}
-    setcontrol(d->time, d->ctrl, m->nu);
+    
     mj_step(m, d);
 	if (counter == 0) {
 		forcei = forceIn;
-		li = d->sensordata[0];
-		printf("Li = %f\n", li);
-		printf("Li = %f\n", d->sensordata[0]);
+		mj_tendon(m, d);
+		li = d->ten_length[0];
+		printf("Li is the following value = %f\n", li);
 	}
 
 	
@@ -153,8 +156,12 @@ void advance(void)
 	
 	
 	incomingData[readResult] = 0;
-	posOut = (d->sensordata[0] - li) * 500; //tendon length multiplied and offset to be near max of DUE dac output limit
+	mj_tendon(m, d);
+	posOut = (- (d->ten_length[0] - li) / li) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
 	//posOut = forceIn; // for loopback testing
+	printf("%i   %f\n", counter, posOut);
+
+	
 	
 
 	compress12bit(sendbuf, posOut); //second joint angle
@@ -314,7 +321,9 @@ int main(int argc, const char** argv)
         printf("%f\n", m->qpos_spring[i]);
     }
 	//advance();
-	
+	//mj_tendon(m, d);
+	//li = d->ten_length[0];
+	//printf("Li = %f\n", li);
     // main loop
     
     tStart = clock();
