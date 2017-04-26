@@ -35,6 +35,7 @@ int readResult = 0;
 int timeout_counter = 0;
 float forceIn;
 float forcei;
+float posOuti = 2;
 float liveforce = 0;
 float forceAdj = 0;
 float forcePrev = 0;
@@ -138,30 +139,40 @@ void advance(void)
 	}
     
     mj_step(m, d);
-	if (counter == 0) {
-		forcei = forceIn;
-		mj_tendon(m, d);
-		li = d->ten_length[0];
-		printf("Li is the following value = %f\n", li);
-	}
 
-	
 	if (counter == number_of_samples - 1) {
 		lf = d->sensordata[0];
 		
 	}
-	
+	if (counter == 0) {
+		forcei = forceIn;
+		mj_tendon(m, d);
+		li = d->ten_length[0];
+	}
 
     counter ++;
 	
 	
 	incomingData[readResult] = 0;
 	mj_tendon(m, d);
-	posOut = (- (d->ten_length[0] - li) / li) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
-	//posOut = forceIn; // for loopback testing
-	printf("%i   %f\n", counter, posOut);
-
+	// NOTE: initial tend length defined as ML
+	// subtract some initial value near top of the range, e.g. 2, so muscle has some room to lengthen first
+	posOut = posOuti - (- (d->ten_length[0] - li) / li) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
+	//Clamp posOut
+	if (posOut > 2.2) {
+		posOut = 2.2;
+	}
+	else if (posOut < 0) {
+		posOut = 0;
+	}
 	
+	//posOut = forceIn; // for loopback testing
+	//printf("%i   %f\n", counter, posOut);
+
+	if (counter == 1) {
+		printf("Li is the following value = %f\n", li);
+		printf("posOut is the following value = %f\n", posOut);
+	}	
 	
 
 	compress12bit(sendbuf, posOut); //second joint angle
@@ -372,7 +383,7 @@ int main(int argc, const char** argv)
 		}
 	 }
 	 //RESET to initial offset value so AURURA doesn't jump!!
-	compress12bit(sendbuf, 2.75); //second joint angle
+	compress12bit(sendbuf, posOuti); //second joint angle
 	sendbuf[2] = 65;
 	SP->WriteData(sendbuf, sizeof(sendbuf));
 	 
