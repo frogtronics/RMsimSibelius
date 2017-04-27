@@ -35,7 +35,7 @@ int readResult = 0;
 int timeout_counter = 0;
 float forceIn;
 float forcei;
-float posOuti = 2;
+float posOuti = 2;// make consistent with Arduino code
 float liveforce = 0;
 float forceAdj = 0;
 float forcePrev = 0;
@@ -138,6 +138,11 @@ void advance(void)
 		setcontrol(d->time, d->ctrl, m->nu);
 	}
     
+	// note mysterioous 4 ms delay before communication works properly
+	//- you can see this if you make initial arduino write to be something other than posOuti, line 136
+	//if (counter > 4) {
+	//	mj_step(m, d);
+	//} 
     mj_step(m, d);
 
 	if (counter == number_of_samples - 1) {
@@ -148,6 +153,7 @@ void advance(void)
 		forcei = forceIn;
 		mj_tendon(m, d);
 		li = d->ten_length[0];
+		//compress12bit(sendbuf, posOuti); 
 	}
 
     counter ++;
@@ -176,6 +182,13 @@ void advance(void)
 	
 
 	compress12bit(sendbuf, posOut); //second joint angle
+/* 	if (counter < 20) {
+		compress12bit(sendbuf, posOuti);
+	}
+	else {
+		compress12bit(sendbuf, posOut);
+	} */
+	
 	sendbuf[2] = 65;
 	SP->WriteData(sendbuf, sizeof(sendbuf));
 
