@@ -97,15 +97,15 @@ void setcontrol(mjtNum time, mjtNum* ctrl, int nu)
 	forceAdj = -liveforce * (forceIn - force_offset);
 	
 	//ctrl[0] = forceAdj;//ankle extensor
-	if (d->qpos[8] + m->qpos0[8] < -3) {// check if ankle angle is greater than 180 degrees, negative angle
+/* 	if (d->qpos[8] + m->qpos0[8] < -3) {// check if ankle angle is greater than 180 degrees, negative angle
 		//ctrl[0] = inputdata_inforces[counter][0];//ankle extensor force
 		ctrl[0] = forceAdj;//ankle extensor
 		//printf("%f\n", forceAdj);
 	}
 	else {
 		ctrl[0] = 0;
-	}
-	
+	} */
+	ctrl[0] = forceAdj;//ankle extensor
 	ctrl[1] = inputdata_inforces[counter][1];//knee extensor servo pos
 	ctrl[2] = inputdata_inforces[counter][2];//hip extensor servo pos
 	
@@ -113,6 +113,7 @@ void setcontrol(mjtNum time, mjtNum* ctrl, int nu)
     d->xfrc_applied[6*6 + 2] = inputdata_inforces[counter][3]; // body 6 (from 0) is com
 	
 	forcePrev = forceIn;
+	printf("%f\n", ctrl[0]);
     // for( int i=0; i<nu; i++ )
         //qfrc_applied[i] = mju_sin(time);
         //qfrc_applied[i] = -1* switches[i];
