@@ -36,6 +36,15 @@ int timeout_counter = 0;
 float forceIn;
 float forcei;
 float posOuti = 2;// make consistent with Arduino code
+float posOut_prev = 2;
+bool run_mode = true;
+int run_mode_counter = 0;
+bool SRlatch_Q = false;
+bool SRlatch_nQ = true;
+bool SRlatch_Q_prev = false;
+bool SRlatch_nQ_prev = true;
+bool is_unstable = false;
+bool is_overextended = false;
 float liveforce = 0;
 float forceAdj = 0;
 float forcePrev = 0;
@@ -86,7 +95,16 @@ char opt_title[1000] = "";
 char opt_content[1000];
 
 
-
+void SRlatch(bool latchSET, bool latchRESET)
+{
+	bool SRenable = true;
+	bool SRlatch_Q_prev = SRlatch_Q;
+	bool SRlatch_nQ_prev = SRlatch_nQ;
+	SRlatch_Q = !(latchRESET||SRlatch_nQ_prev);
+	SRlatch_nQ = !(latchSET||SRlatch_Q_prev);
+	SRlatch_Q_prev =SRlatch_Q;
+	SRlatch_nQ_prev =SRlatch_nQ;
+}
 
 
 // generate sinusoidal control waveform
@@ -113,7 +131,7 @@ void setcontrol(mjtNum time, mjtNum* ctrl, int nu)
     d->xfrc_applied[6*6 + 2] = inputdata_inforces[counter][3]; // body 6 (from 0) is com
 	
 	forcePrev = forceIn;
-	printf("%f\n", ctrl[0]);
+	//printf("%f\n", ctrl[0]);
     // for( int i=0; i<nu; i++ )
         //qfrc_applied[i] = mju_sin(time);
         //qfrc_applied[i] = -1* switches[i];
@@ -154,24 +172,70 @@ void advance(void)
 		forcei = forceIn;
 		mj_tendon(m, d);
 		li = d->ten_length[0];
+		SRlatch(false, true);
 		//compress12bit(sendbuf, posOuti); 
 	}
+
 
     counter ++;
 	
 	
 	incomingData[readResult] = 0;
 	mj_tendon(m, d);
+	//posOut_prev = posOut;
+	
+	is_unstable = abs(posOut - posOut_prev) > 0.5;
+	is_overextended = d->qpos[8] + m->qpos0[8] < -3;
+	run_mode = !((is_unstable || is_overextended) && counter > 10);
+	if (counter < 300) {
+		//printf("unstable %d overextend %d posOut %f counter %i\n", is_unstable, is_overextended, posOut, counter);
+		printf("latch test %d  counter %i\n", SRlatch_Q, counter);
+	}
+	
+	
 	// NOTE: initial tend length defined as ML
 	// subtract some initial value near top of the range, e.g. 2, so muscle has some room to lengthen first
-	posOut = posOuti - (- (d->ten_length[0] - li) / li) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
-	//Clamp posOut
-	if (posOut > 2.2) {
-		posOut = 2.2;
+	
+	if (run_mode) { // only update posOut if not in safe mode
+		if (run_mode_counter == 0) {
+			SRlatch(true, false);
+		}
+		if (!SRlatch_Q) {
+			posOut = posOuti - (- (d->ten_length[0] - li) / li) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
+			
+			//Clamp posOut
+/* 			if (posOut > 2.2) {
+				posOut = 2.2;
+			}
+			else if (posOut < 0) {
+				posOut = 0;
+			} */
+			if (posOut > 2.2 || posOut < 0) {
+				posOut = posOut_prev;
+			}
+			
+			posOut_prev = posOut;
+		}
+		else {
+			//posOut = posOut_prev;
+		}
+		run_mode_counter ++;
+/* 		//Clamp posOut
+		if (posOut > 2.2) {
+			posOut = 2.2;
+		}
+		else if (posOut < 0) {
+			posOut = 0;
+		} */
 	}
-	else if (posOut < 0) {
-		posOut = 0;
+	else {
+		run_mode_counter = 0;
+		
 	}
+	
+
+	
+	
 	
 	//posOut = forceIn; // for loopback testing
 	//printf("%i   %f\n", counter, posOut);
@@ -204,8 +268,8 @@ void advance(void)
     arrayout[counter] = d->time;
     dataout[counter][0] = d->time;
     dataout[counter][1] = realTime;
-	dataout[counter][4] = posOut;
-	dataout[counter][5] = forceAdj;
+	dataout[counter][2] = posOut;
+	dataout[counter][3] = forceAdj;
 	//dataout[counter][]
     for (int j = 0; j < (m->nbody) * 3; j++) {
 		pos_dataout[counter][j] = d->xpos[j];//skip world body
@@ -215,6 +279,49 @@ void advance(void)
 
 }
 
+void advance_safe(void) // simulation in safe mode to protect muscle
+{
+	printf("safe mode \n");
+	liveforce = 0; //ignore force from Gandalf
+	forceIn = (decompress12bit(incomingData));
+	setcontrol(d->time, d->ctrl, m->nu);
+    mj_step(m, d);
+
+	if (counter == number_of_samples - 1) {
+		lf = d->sensordata[0];
+		
+	}
+    counter ++;
+	incomingData[readResult] = 0;
+	mj_tendon(m, d);
+
+	if (counter == 1) {
+		printf("Li is the following value = %f\n", li);
+		printf("posOut is the following value = %f\n", posOut);
+	}	
+	
+
+	compress12bit(sendbuf, posOut); //second joint angle
+	
+	sendbuf[2] = 65;
+	SP->WriteData(sendbuf, sizeof(sendbuf));
+
+	prevTime = realTime;
+    realTime = (double)(clock() - tStart)/CLOCKS_PER_SEC;//calculate real time sim takes
+
+    arrayout[counter] = d->time;
+    dataout[counter][0] = d->time;
+    dataout[counter][1] = realTime;
+	dataout[counter][2] = posOut;
+	dataout[counter][3] = forceAdj;
+	//dataout[counter][]
+    for (int j = 0; j < (m->nbody) * 3; j++) {
+		pos_dataout[counter][j] = d->xpos[j];//skip world body
+	}
+        
+
+
+}
 
 
 
@@ -384,7 +491,16 @@ int main(int argc, const char** argv)
 				// timeout_counter ++;//wait
 				// printf("%f\n", realTime - prevTime);
 			// }
+
+/* 			while (run_mode) {
+				advance();
+				
+			
+			} */
+			//printf("run mode %d \n", run_mode);
 			advance();
+			//printf("safe mode %d \n", safe_mode);
+			//advance_safe();
 			//printf("%f\n", d->qpos[8] + m->qpos0[8]);
 			//printf("%f\n", d->sensordata[0]);
 			//mj_step(m, d);
