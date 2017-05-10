@@ -26,41 +26,41 @@
 			<geom type="sphere" size="0.003" rgba="1 0 0 0"/><!-- made transparent for now -->
 		</body>
 		<body name="s_pft" pos="0 0 0"><!-- Foot --><!-- BODY 2 -->
-			<inertial pos="0 0. 0" mass="0.000163" diaginertia="1.533490E-9 1.533490E-9 3.516490E-10" />
-			<geom name="geom_pft" type="capsule" fromto="0 0 0 0 0 0.010000" size="2.077699E-3" rgba="0.5 0.5 0 .4"/>
+			<inertial pos="0 0. 0" mass="0.000163" diaginertia="2.575E-09 4.48E-10 2.73E-09" />
+			<geom name="geom_pft" type="capsule" fromto="0 0 0 0 0 0.01" size="0.002" rgba="0.5 0.5 0 .4"/>
 			<joint name="j_pft" type="free" pos="0 0 0" stiffness="0" damping="0" limited="false"/>
 			<site name="t_ank_dst" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
-			<body name="s_tar" pos="0 0 0.010000"><!-- Tarsals --><!-- BODY 3 -->
-				<inertial pos="0 0. 0" mass="0.000156" diaginertia="1.043280E-9 1.043280E-9 4.156370E-10" /><!-- mass + moi of foot combined with tarsus-->
-				<geom name="geom_tar" type="capsule" fromto="0 0 0 0 0 0.008028" size="2.311582E-3" rgba="0.5 0.5 0 .4"/>
+			<body name="s_tar" pos="0 0 0.01"><!-- Tarsals --><!-- BODY 3 -->
+				<inertial pos="0 0. 0" mass="0.00015557" diaginertia="1.279E-09 3.99E-10 1.264E-09" /><!-- mass + moi of foot combined with tarsus-->
+				<geom name="geom_tar" type="capsule" fromto="0 0 0 0 0 0.0080277" size="0.002" rgba="0.5 0.5 0 .4"/>
 				<joint name="j_tmt" type="hinge" axis="0 1 0" pos="0 0 0" solreflimit="0.002 1" solimplimit="0.9 0.9 0.001"/>
 				<!-- <site name="t_ank_prx" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/> -->
 				<geom name="jointSphere_tmt" type="sphere" pos="0 0 0" size="0.003" rgba=".3 .9 .3 .4"/><!-- seems to be necessary for ground contact -->
 				<site name="t_tmt_side" pos="-0.003 0 0" size="0.0003" rgba="0 1 1 1"/>
 				<site name="t_ank_via" pos="-0.002 0 0.004" size="0.001" rgba="1 0 0 1"/>
-				<body name="s_tib" pos="0 0 0.008028"><!-- Tibfib --><!-- BODY 4 -->
-					<inertial pos="0 0 0" mass="0.000362" diaginertia="1.307030E-8 1.307030E-8 8.995560E-10"/>
-					<geom name="geom_sha" type="capsule" fromto="0 0 0 0 0 0.020467" size="2.230781E-3" rgba="0.5 0.5 0 .4"/>
+				<body name="s_tib" pos="0 0 0.0080277"><!-- Tibfib --><!-- BODY 4 -->
+					<inertial pos="0 0 0" mass="0.00036153" diaginertia="6.383E-09 1.524E-09 6.6E-09"/>
+					<geom name="geom_sha" type="capsule" fromto="0 0 0 0 0 0.0204671" size="0.002" rgba="0.5 0.5 0 .4"/>
 					<joint name="j_ank" type="hinge" axis="0 1 0" pos="0 0 0"/> <!-- <springdamper=".002 1" solreflimit="0.002 0.5" solimplimit="0.9 0.9 0.001"--> 
 					<site name="t_ank_prx" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
 					<site name="t_kne_dst" pos="0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
 					<geom name="jointSphere_ank" type="sphere" pos="0 0 0" size="0.003" rgba=".3 .9 .3 .4"/>
 					<site name="t_ank_side" pos="-0.003 0 0" size="0.0003" rgba="0 1 1 1"/>
-					<body name="s_fem" pos="0 0 0.020467"><!-- Femur --><!-- BODY 5 -->
-						<inertial pos="0 0 0" mass="0.000776" diaginertia="2.296600E-8 2.296600E-8 4.987600E-9"/>
-						<geom name="geom_thg" type="capsule" fromto="0 0 0 0 0 0.017791" size="3.585036E-3" rgba="0.7 0.7 0 .4"/>
+					<body name="s_fem" pos="0 0 0.0204671"><!-- Femur --><!-- BODY 5 -->
+						<inertial pos="0 0 0" mass="0.00077613" diaginertia="1.57E-08 6.71E-09 1.594E-08"/>
+						<geom name="geom_thg" type="capsule" fromto="0 0 0 0 0 0.0177912" size="0.002" rgba="0.7 0.7 0 .4"/>
 						<joint name="j_kne" type="hinge" axis="0 1 0" pos="0 0 0"/>
 						<site name="t_kne_prx" pos="0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
 						<site name="t_hip_dst" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
 						<geom name="jointSphere_kne" type="sphere" pos="0 0 0" size="0.003" rgba="0 0 1 .5"/>
 						<site name="t_kne_side" pos="0.003 0 0" size="0.0003" rgba="0 1 1 1"/>
-						<body name="s_com" pos="0 0 0.02"><!-- BODY 6 for COM applying force -->
+						<body name="s_com" pos="0 0 0.0204671"><!-- BODY 6 for COM applying force -->
 							<inertial pos="0 0 0" mass="0.000000000001"/>
 							<geom type="sphere" pos="0 0 0" size="0.003" rgba="1 0 0 .4"/>
 						</body>
-						<body name="s_bod" pos="0 0 0.017791"><!-- BODY 7 -->
-							<inertial pos="0 0. 0" mass="0.007200" diaginertia="4.239260E-7 4.239260E-7 3.800670E-7"/>
-							<geom name="geom_bod" type="capsule" fromto="0 0 0 0 0 0.019744" size="1.027493E-2" rgba="0.5 0.5 0 .4"/><!-- fromto="0 0. 0.046286  0 0. 0.0660299 -->
+						<body name="s_bod" pos="0 0 0.0177912"><!-- BODY 7 -->
+							<inertial pos="0 0. 0" mass="0.0045" diaginertia="0.000000891 0.000000473 0.00000112"/>
+							<geom name="geom_bod" type="capsule" fromto="0 0 0 0 0 0.0197439" size="0.002" rgba="0.5 0.5 0 .4"/><!-- fromto="0 0. 0.046286  0 0. 0.0660299 -->
 							<site name="t_hip_prx" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
 							<geom name="jointSphere_hip" type="sphere" pos="0 0. 0" size="0.003" rgba=".3 .9 .3 .4"/>
 							<site name="t_hip_side" pos="-0.003 0 0" size="0.0003" rgba="0 1 1 1"/>

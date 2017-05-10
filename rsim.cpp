@@ -189,7 +189,7 @@ void advance(void)
 	run_mode = !((is_unstable || is_overextended) && counter > 10);
 	if (counter < 300) {
 		//printf("unstable %d overextend %d posOut %f counter %i\n", is_unstable, is_overextended, posOut, counter);
-		printf("latch test %d  counter %i\n", SRlatch_Q, counter);
+		//printf("latch test %d  counter %i\n", SRlatch_Q, counter);
 	}
 	
 	
@@ -278,51 +278,6 @@ void advance(void)
 
 
 }
-
-void advance_safe(void) // simulation in safe mode to protect muscle
-{
-	printf("safe mode \n");
-	liveforce = 0; //ignore force from Gandalf
-	forceIn = (decompress12bit(incomingData));
-	setcontrol(d->time, d->ctrl, m->nu);
-    mj_step(m, d);
-
-	if (counter == number_of_samples - 1) {
-		lf = d->sensordata[0];
-		
-	}
-    counter ++;
-	incomingData[readResult] = 0;
-	mj_tendon(m, d);
-
-	if (counter == 1) {
-		printf("Li is the following value = %f\n", li);
-		printf("posOut is the following value = %f\n", posOut);
-	}	
-	
-
-	compress12bit(sendbuf, posOut); //second joint angle
-	
-	sendbuf[2] = 65;
-	SP->WriteData(sendbuf, sizeof(sendbuf));
-
-	prevTime = realTime;
-    realTime = (double)(clock() - tStart)/CLOCKS_PER_SEC;//calculate real time sim takes
-
-    arrayout[counter] = d->time;
-    dataout[counter][0] = d->time;
-    dataout[counter][1] = realTime;
-	dataout[counter][2] = posOut;
-	dataout[counter][3] = forceAdj;
-	//dataout[counter][]
-    for (int j = 0; j < (m->nbody) * 3; j++) {
-		pos_dataout[counter][j] = d->xpos[j];//skip world body
-	}
-        
-
-
-}
-
 
 
 
@@ -479,44 +434,35 @@ int main(int argc, const char** argv)
 		// printf("One\n");
 		// Sleep(1000);
 	  }
-
-	 while (SP->IsConnected() && counter < number_of_samples) 
+	 int reset_steps = 190; // number of steps over which to reset to initial posOut
+	 float posReset = posOut;
+	 while (SP->IsConnected() && counter < number_of_samples + reset_steps) 
 	 {
 		while (SP->ReadData(incomingData, 3) == 3 && incomingData[2] == 65)
 		{
-			// forceIn = (decompress12bit(incomingData));
-			// incomingData[readResult] = 0;
 			timeout_counter = 0;
-			// while ((realTime - prevTime) < 0.004 && timeout_counter < 3000) {
-				// timeout_counter ++;//wait
-				// printf("%f\n", realTime - prevTime);
-			// }
-
-/* 			while (run_mode) {
+			//run mode
+			if (counter < number_of_samples) {
 				advance();
-				
-			
-			} */
-			//printf("run mode %d \n", run_mode);
-			advance();
-			//printf("safe mode %d \n", safe_mode);
-			//advance_safe();
-			//printf("%f\n", d->qpos[8] + m->qpos0[8]);
-			//printf("%f\n", d->sensordata[0]);
-			//mj_step(m, d);
-			//counter ++;
-			// posOut = 0.001 * counter; //d->qpos[1]; //second joint angle
-			// compress12bit(sendbuf, posOut); //second joint angle
-			// sendbuf[2] = 65;
-			// SP->WriteData(sendbuf, sizeof(sendbuf));
-			//printf("%f\n", posOut);
+			}
+			//reset mode
+			//RESET to initial offset value so AURURA doesn't jump, but do it slowly!!
+			else if (counter >= number_of_samples && counter < number_of_samples + reset_steps) {
+				for (int i = 0; i < reset_steps; i ++) {
+					float resetFraction = ((float)i / ((float)reset_steps - 1));
+					posReset = posOuti * resetFraction + posOut * (1 - resetFraction);
+					compress12bit(sendbuf, posReset); //second joint angle
+					sendbuf[2] = 65;
+					SP->WriteData(sendbuf, sizeof(sendbuf));
+					Sleep(1);
+					counter ++;
+					printf("posOut reset %f \n", posReset);
+				}	
+			}
 		}
 	 }
-	 //RESET to initial offset value so AURURA doesn't jump!!
-	compress12bit(sendbuf, posOuti); //second joint angle
-	sendbuf[2] = 65;
-	SP->WriteData(sendbuf, sizeof(sendbuf));
-	 
+
+	
     //mj_printData(m, d, outfile);
     printf("quat1 %f %f %f %f\n", d->qpos[0], d->qpos[1], d->qpos[2], d->qpos[3]);
     printf("%d %f\n", counter, d->time);
