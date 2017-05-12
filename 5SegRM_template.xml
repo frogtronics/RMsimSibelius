@@ -54,7 +54,7 @@
 						<site name="t_hip_dst" pos="-0.002 0 0.004" size="0.001" rgba="0 0 1 1"/>
 						<geom name="jointSphere_kne" type="sphere" pos="0 0 0" size="jointSphere_kne_radius" rgba="0 0 1 .5"/>
 						<site name="t_kne_side" pos="0.003 0 0" size="0.0003" rgba="0 1 1 1"/>
-						<body name="s_com" pos="0 0 0.02"><!-- BODY 6 for COM applying force -->
+						<body name="s_com" pos="0 0 com_pos_Z"><!-- BODY 6 for COM applying force -->
 							<inertial pos="0 0 0" mass="0.000000000001"/>
 							<geom type="sphere" pos="0 0 0" size="0.003" rgba="1 0 0 .4"/>
 						</body>
@@ -65,7 +65,7 @@
 							<geom name="jointSphere_hip" type="sphere" pos="0 0. 0" size="jointSphere_hip_radius" rgba=".3 .9 .3 .4"/>
 							<site name="t_hip_side" pos="-0.003 0 0" size="0.0003" rgba="0 1 1 1"/>
 							<joint name="j_hip" type="hinge" axis="0 1 0" pos="0 0 0"/>
-							<geom name="snoutSphere" type="sphere" pos="0 0. 0" size="0.003" rgba="0 0 1 0.4"/>
+							<geom name="snoutSphere" type="sphere" pos="0 0 snoutSphere_pos_Z" size="0.003" rgba="0 0 1 0.4"/>
 						</body>
 					</body>	
 				</body>	

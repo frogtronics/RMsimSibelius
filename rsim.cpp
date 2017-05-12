@@ -47,6 +47,8 @@ bool is_unstable = false;
 bool is_overextended = false;
 float liveforce = 0;
 float forceAdj = 0;
+float lrest = 0; // length of muscle from actual prep, not to be confused with Li which is initial length of model's mtu path
+float forceScale = 1; // scales Aurora force if too high then compensates in MJ
 float forcePrev = 0;
 float posOut;
 float lf = 0;
@@ -76,7 +78,7 @@ char const *outfile = "savedData.txt";
 //allocate array for output data
 long double arrayout[10000] = {0};
 float dataout[10000][20];
-float pos_dataout[10000][24];
+float pos_dataout[10000][27];
 
 int number_of_samples = 300;
 int counter = 0;
@@ -89,6 +91,8 @@ float li = 0; //initial tendon length
 std::array<std::array<float, 11>, 1> inputdata_qpos;//i rows, j cols
 std::array<std::array<float, 4>, 1000> inputdata_inforces;//3 input forces, 1000 rows
 std::ifstream datfile_qpos("qposInit.dat");
+std::ifstream datfile_forceScale("forceScale.dat");
+std::ifstream datfile_restLength("lrest_m.dat");
 std::ifstream datfile_inforces("inforces.dat");
 
 char opt_title[1000] = "";
@@ -112,7 +116,11 @@ void setcontrol(mjtNum time, mjtNum* ctrl, int nu)
 {
     int switches[2] = {1};
 	float force_offset = forcei;
-	forceAdj = -liveforce * (forceIn - force_offset);
+	forceAdj = -liveforce * (1/ forceScale) * (forceIn - force_offset);
+	if (forceAdj > 0) {
+		forceAdj = 0;
+	}
+
 	
 	//ctrl[0] = forceAdj;//ankle extensor
 /* 	if (d->qpos[8] + m->qpos0[8] < -3) {// check if ankle angle is greater than 180 degrees, negative angle
@@ -184,7 +192,7 @@ void advance(void)
 	mj_tendon(m, d);
 	//posOut_prev = posOut;
 	
-	is_unstable = abs(posOut - posOut_prev) > 0.5;
+	is_unstable = abs(posOut - posOut_prev) > 0.2;
 	is_overextended = d->qpos[8] + m->qpos0[8] < -3;
 	run_mode = !((is_unstable || is_overextended) && counter > 10);
 	if (counter < 300) {
@@ -201,7 +209,7 @@ void advance(void)
 			SRlatch(true, false);
 		}
 		if (!SRlatch_Q) {
-			posOut = posOuti - (- (d->ten_length[0] - li) / li) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
+			posOut = posOuti - (- (d->ten_length[0] - li) / lrest) * (2.2 / 0.32); //tendon length multiplied and offset to be near max of DUE dac output limit 2.2 V range for 0.32 strain
 			
 			//Clamp posOut
 /* 			if (posOut > 2.2) {
@@ -242,7 +250,9 @@ void advance(void)
 
 	if (counter == 1) {
 		printf("Li is the following value = %f\n", li);
+		printf("Lrest = %f\n", lrest);
 		printf("posOut is the following value = %f\n", posOut);
+		printf("force scale %f\n", forceScale);
 	}	
 	
 
@@ -273,6 +283,10 @@ void advance(void)
 	//dataout[counter][]
     for (int j = 0; j < (m->nbody) * 3; j++) {
 		pos_dataout[counter][j] = d->xpos[j];//skip world body
+	}
+	
+	for (int j =0; j < 3; j++) {
+		pos_dataout[counter][j + (m->nbody) * 3] = d->geom_xpos[(m->ngeom - 1) * 3 + j];
 	}
         
 
@@ -368,7 +382,9 @@ int main(int argc, const char** argv)
     }
 
     datfile_inforces.close ();
-
+	datfile_forceScale >> forceScale;
+	datfile_restLength >> lrest;
+	
     // delete old model, assign new
     mj_deleteData(d);
     mj_deleteModel(m);
@@ -456,7 +472,7 @@ int main(int argc, const char** argv)
 					SP->WriteData(sendbuf, sizeof(sendbuf));
 					Sleep(1);
 					counter ++;
-					printf("posOut reset %f \n", posReset);
+					//printf("posOut reset %f \n", posReset);
 				}	
 			}
 		}
@@ -485,7 +501,7 @@ int main(int argc, const char** argv)
     //fwrite(arrayout, sizeof(char), sizeof(arrayout), f);
     
     for(int i = 1; i < number_of_samples; i++) {
-        for (int j = 0; j < (m->nbody) * 3; j++)
+        for (int j = 0; j < (m->nbody) * 3 + 3; j++)
            fprintf(f1, "%f\t", pos_dataout[i][j]); 
         fprintf(f1, "\n");
 
